@@ -11,7 +11,7 @@
 
 use std::{
     collections::HashMap,
-    io::{Read, Write},
+    io::{Cursor, Read, Write},
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -61,12 +61,13 @@ pub fn import_graph<R: Read>(mut data: R) -> Result<crate::GraphType, crate::err
     let mut header = [0u8; 32];
     data.read_exact(&mut header)
         .map_err(|_| GraphSerializationError::InsufficientData(32))?;
+    let mut header = Cursor::new(header);
 
     // Read header
-    let nodes_capacity = header.as_slice().read_u64::<LittleEndian>()? as usize;
-    let edges_capacity = header.as_slice().read_u64::<LittleEndian>()? as usize;
-    let num_nodes = header.as_slice().read_u64::<LittleEndian>()? as usize;
-    let num_edges = header.as_slice().read_u64::<LittleEndian>()? as usize;
+    let nodes_capacity = header.read_u64::<LittleEndian>()? as usize;
+    let edges_capacity = header.read_u64::<LittleEndian>()? as usize;
+    let num_nodes = header.read_u64::<LittleEndian>()? as usize;
+    let num_edges = header.read_u64::<LittleEndian>()? as usize;
 
     let expected_size = 32 + (num_nodes * 8) + (num_edges * 17);
     // Create graph with appropriate capacity
