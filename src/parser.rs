@@ -11,7 +11,7 @@
 
 use std::{
     collections::HashMap,
-    io::{Cursor, Write},
+    io::{Read, Write},
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -57,25 +57,18 @@ pub fn export_graph<W: Write>(
 }
 
 /// Import the graph from binary format
-pub fn import_graph(data: &[u8]) -> Result<crate::GraphType, crate::error::Error> {
-    if data.len() < 32 {
-        return Err(GraphSerializationError::InsufficientData(data.len()).into());
-    }
-
-    let mut cursor = Cursor::new(data);
+pub fn import_graph<R: Read>(mut data: R) -> Result<crate::GraphType, crate::error::Error> {
+    let mut header = [0u8; 32];
+    data.read_exact(&mut header)
+        .map_err(|_| GraphSerializationError::InsufficientData(32))?;
 
     // Read header
-    let nodes_capacity = cursor.read_u64::<LittleEndian>()? as usize;
-    let edges_capacity = cursor.read_u64::<LittleEndian>()? as usize;
-    let num_nodes = cursor.read_u64::<LittleEndian>()? as usize;
-    let num_edges = cursor.read_u64::<LittleEndian>()? as usize;
+    let nodes_capacity = header.as_slice().read_u64::<LittleEndian>()? as usize;
+    let edges_capacity = header.as_slice().read_u64::<LittleEndian>()? as usize;
+    let num_nodes = header.as_slice().read_u64::<LittleEndian>()? as usize;
+    let num_edges = header.as_slice().read_u64::<LittleEndian>()? as usize;
 
-    // Validate expected data size
     let expected_size = 32 + (num_nodes * 8) + (num_edges * 17);
-    if data.len() < expected_size {
-        return Err(GraphSerializationError::InsufficientData(data.len()).into());
-    }
-
     // Create graph with appropriate capacity
     let mut graph = crate::GraphType::with_capacity(nodes_capacity, edges_capacity);
 
@@ -84,16 +77,24 @@ pub fn import_graph(data: &[u8]) -> Result<crate::GraphType, crate::error::Error
 
     // Read nodes
     for _ in 0..num_nodes {
-        let weight = cursor.read_u64::<LittleEndian>()?;
+        let weight = data
+            .read_u64::<LittleEndian>()
+            .map_err(|_| GraphSerializationError::InsufficientData(expected_size))?;
         let idx = graph.add_node(weight);
         node_map.insert(weight, idx);
     }
 
     // Read edges
     for _ in 0..num_edges {
-        let source_weight = cursor.read_u64::<LittleEndian>()?;
-        let relation = cursor.read_u8()?;
-        let target_weight = cursor.read_u64::<LittleEndian>()?;
+        let source_weight = data
+            .read_u64::<LittleEndian>()
+            .map_err(|_| GraphSerializationError::InsufficientData(expected_size))?;
+        let relation = data
+            .read_u8()
+            .map_err(|_| GraphSerializationError::InsufficientData(expected_size))?;
+        let target_weight = data
+            .read_u64::<LittleEndian>()
+            .map_err(|_| GraphSerializationError::InsufficientData(expected_size))?;
 
         let source_idx = node_map
             .get(&source_weight)

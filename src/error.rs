@@ -12,7 +12,7 @@
 /// Graph serialization error
 #[derive(Debug, thiserror::Error)]
 pub enum GraphSerializationError {
-    #[error("Invalid data: insufficient bytes (expected at least 32, got {0})")]
+    #[error("Invalid data: insufficient bytes (expected at least {0}, got less)")]
     InsufficientData(usize),
     #[error("Invalid format: missing separator between nodes and edges")]
     InvalidFormat,

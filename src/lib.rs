@@ -10,10 +10,17 @@
 // THE SOFTWARE.
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
-use std::path::Path;
+use std::{
+    fs::File,
+    io::{BufReader, BufWriter, Write},
+    path::Path,
+};
 
+use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use nostr::key::PublicKey;
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
+
+pub(crate) const COMPRESSION_LEVEL: Compression = Compression::new(4);
 
 /// Library errors
 pub mod error;
@@ -63,49 +70,31 @@ impl WotGraph {
 
     /// Imports a graph from a gzip-compressed bytes. The graph should be
     /// previously exported using [`WotGraph::export_gzip`].
+    #[inline]
     pub fn import_gzip(data: &[u8]) -> Result<Self, error::Error> {
-        // It's usually half of the size, why not allocate it first
-        let mut decompressed_graph = Vec::with_capacity(data.len() * 2);
-        utils::gzip_decompress(data, &mut decompressed_graph)?;
-
-        Self::import(&decompressed_graph)
+        Ok(Self {
+            inner: parser::import_graph(GzDecoder::new(data))?,
+        })
     }
 
     /// Import a graph from a file. Must be exported using
     /// [`WotGraph::export`] or [`WotGraph::export_to_file`].
     #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    #[inline]
     pub fn import_from_file<P: AsRef<Path>>(path: P) -> Result<Self, error::Error> {
-        use std::{
-            fs::File,
-            io::{self, BufReader},
-        };
-
-        let file = File::open(path)?;
-        let mut imported_graph = if let Ok(metadata) = file.metadata() {
-            Vec::with_capacity(metadata.len().try_into().unwrap_or(usize::MAX))
-        } else {
-            Vec::new()
-        };
-
-        io::copy(&mut BufReader::new(file), &mut imported_graph)?;
-        Self::import(&imported_graph)
+        Ok(Self {
+            inner: parser::import_graph(BufReader::new(File::open(path)?))?,
+        })
     }
 
     /// Import a gzip compressed graph from a file. Must be exported using
     /// [`WotGraph::export_gzip`] or [`WotGraph::export_to_file_gzip`].
     #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    #[inline]
     pub fn import_from_file_gzip<P: AsRef<Path>>(path: P) -> Result<Self, error::Error> {
-        use std::{fs::File, io::BufReader};
-
-        let file = File::open(path)?;
-        let mut decompressed_graph = if let Ok(metadata) = file.metadata() {
-            Vec::with_capacity(metadata.len().try_into().unwrap_or(usize::MAX))
-        } else {
-            Vec::new()
-        };
-
-        utils::gzip_decompress(BufReader::new(file), &mut decompressed_graph)?;
-        Self::import(&decompressed_graph)
+        Ok(Self {
+            inner: parser::import_graph(GzDecoder::new(File::open(path)?))?,
+        })
     }
 
     /// Add a new node.
@@ -150,6 +139,11 @@ impl WotGraph {
             .ok()
     }
 
+    /// Calculates the total number of bytes needed for exporting the graph.
+    fn export_capacity(&self) -> usize {
+        32 + (self.inner.raw_nodes().len() * 8) + (self.inner.raw_edges().len() * 17)
+    }
+
     /// Export the graph nodes and edges in a binary format (little-endian).
     ///
     /// Format:
@@ -161,10 +155,7 @@ impl WotGraph {
     /// - E * 17 bytes: edges (8 bytes source, 1 byte relation, 8 bytes target)
     #[inline]
     pub fn export(&self) -> Result<Vec<u8>, error::Error> {
-        let capacity =
-            32 + (self.inner.raw_nodes().len() * 8) + (self.inner.raw_edges().len() * 17);
-        let mut buffer = Vec::with_capacity(capacity);
-
+        let mut buffer = Vec::with_capacity(self.export_capacity());
         parser::export_graph(&self.inner, &mut buffer)?;
         Ok(buffer)
     }
@@ -174,10 +165,10 @@ impl WotGraph {
     /// The output is a compressed version of the data from
     /// [`WotGraph::export`].
     pub fn export_gzip(&self) -> Result<Vec<u8>, error::Error> {
-        let exported_graph = self.export()?;
-        // It's usually half of the size, why not allocate it first
-        let mut compressed_graph = Vec::with_capacity(exported_graph.len() / 2);
-        utils::gzip_compress(exported_graph.as_slice(), &mut compressed_graph)?;
+        let mut compressed_graph = Vec::with_capacity(self.export_capacity() / 2);
+        let mut encoder = GzEncoder::new(&mut compressed_graph, COMPRESSION_LEVEL);
+        parser::export_graph(&self.inner, &mut encoder)?;
+        encoder.finish()?;
 
         Ok(compressed_graph)
     }
@@ -185,11 +176,6 @@ impl WotGraph {
     /// Export the graph to a file.
     #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn export_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), error::Error> {
-        use std::{
-            fs::File,
-            io::{BufWriter, Write},
-        };
-
         let mut writer = BufWriter::new(File::create(path)?);
         parser::export_graph(&self.inner, &mut writer)?;
         writer.flush()?;
@@ -200,13 +186,8 @@ impl WotGraph {
     /// Export a gzip compressed graph to file.
     #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
     pub fn export_to_file_gzip<P: AsRef<Path>>(&self, path: P) -> Result<(), error::Error> {
-        use std::{
-            fs::File,
-            io::{BufWriter, Write},
-        };
-
         let mut file = BufWriter::new(File::create(path)?);
-        let mut encoder = flate2::write::GzEncoder::new(&mut file, utils::COMPRESSION_LEVEL);
+        let mut encoder = GzEncoder::new(&mut file, COMPRESSION_LEVEL);
 
         parser::export_graph(&self.inner, &mut encoder)?;
         encoder.finish()?;
