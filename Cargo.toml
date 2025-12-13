@@ -9,3 +9,12 @@ version     = "0.1.0"
 edition     = "2024"
 
 [dependencies]
+flate2 = { version = "1.1.5", default-features = false, features = [
+  "rust_backend",
+] }
+
+byteorder   = "1.5.0"
+nostr       = "0.44.2"
+petgraph    = { version = "0.8.3", features = ["rayon"] }
+thiserror   = "2.0.17"
+xxhash-rust = { version = "0.8.15", features = ["xxh32", "xxh64"] }
