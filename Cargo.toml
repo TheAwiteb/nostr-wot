@@ -1,0 +1,11 @@
+[package]
+name        = "nostr-wot"
+description = "lightweight nostr Web of Trust library"
+license     = "MIT"
+authors     = ["Awiteb <a@4rs.nl>"]
+readme      = "README.md"
+keywords    = ["nostr", "wot"]
+version     = "0.1.0"
+edition     = "2024"
+
+[dependencies]
