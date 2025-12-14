@@ -9,6 +9,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+use std::collections::TryReserveError;
+
 /// Graph serialization error
 #[derive(Debug, thiserror::Error)]
 pub enum GraphSerializationError {
@@ -28,4 +30,6 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("{0}")]
     GraphSerializationError(#[from] GraphSerializationError),
+    #[error("Failed to allocate memory: {0}")]
+    MemoryAllocation(#[from] TryReserveError),
 }

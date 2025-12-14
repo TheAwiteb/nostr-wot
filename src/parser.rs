@@ -71,10 +71,13 @@ pub fn import_graph<R: Read>(mut data: R) -> Result<crate::GraphType, crate::err
 
     let expected_size = 32 + (num_nodes * 8) + (num_edges * 17);
     // Create graph with appropriate capacity
+    // FIXME: Switch to `try_reserve` once it becomes available in petgraph.
+    // Pull Request: <https://github.com/petgraph/petgraph/pull/934>
     let mut graph = crate::GraphType::with_capacity(nodes_capacity, edges_capacity);
 
     // Build a map for fast node lookup
-    let mut node_map = HashMap::with_capacity(num_nodes);
+    let mut node_map = HashMap::new();
+    node_map.try_reserve(num_nodes)?;
 
     // Read nodes
     for _ in 0..num_nodes {
