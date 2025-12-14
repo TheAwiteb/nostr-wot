@@ -38,7 +38,7 @@ pub(crate) type GraphType = DiGraph<u64, u8>;
 #[derive(Default)]
 pub struct WotGraph {
     /// The underlying directed graph.
-    inner: GraphType,
+    pub(crate) inner: GraphType,
 }
 
 impl WotGraph {
@@ -57,6 +57,18 @@ impl WotGraph {
         Self {
             inner: DiGraph::with_capacity(nodes, edges),
         }
+    }
+
+    /// The inner [`petgraph::Graph`] instance.
+    #[inline]
+    pub fn inner(&self) -> &GraphType {
+        &self.inner
+    }
+
+    /// The mutable inner [`petgraph::Graph`] instance.
+    #[inline]
+    pub fn inner_mut(&mut self) -> &mut GraphType {
+        &mut self.inner
     }
 
     /// Imports a graph from bytes. The graph should be previously exported
