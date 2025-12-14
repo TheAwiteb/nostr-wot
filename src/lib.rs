@@ -31,6 +31,10 @@ pub mod relations;
 /// Utils
 pub mod utils;
 
+/// Unit tests
+#[cfg(test)]
+mod tests;
+
 /// WoT graph. storing public key hashes and their relations.
 pub(crate) type GraphType = DiGraph<u64, u8>;
 
