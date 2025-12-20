@@ -9,6 +9,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#![cfg_attr(not(doctest), doc = include_str!("../README.md"))]
+
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use std::{
     fs::File,
