@@ -128,11 +128,49 @@ impl WotGraph {
             .find(|idx| self.inner[*idx] == pkey_hash)
     }
 
-    /// Add a new node.
+    /// Add a new node. This can duplicate nodes, use
+    /// [`WotGraph::add_unique_node`] for no duplicates
     ///
     /// Returns `None` if the graph is full.
+    ///
+    /// ```rust
+    /// use nostr_wot::{WotGraph, relations::Relation};
+    ///
+    /// let mut graph = WotGraph::new();
+    /// graph.add_node(1).unwrap();
+    /// graph.add_node(1).unwrap(); // again
+    /// graph.add_node(2).unwrap();
+    ///
+    /// assert_eq!(graph.inner().raw_nodes().len(), 3) // 3 nodes (duplicated)
+    /// ```
     #[inline]
     pub fn add_node(&mut self, node: u64) -> Option<NodeIndex> {
+        self.inner.try_add_node(node).ok()
+    }
+
+    /// Add a unique node.
+    ///
+    /// Returns `None` if the graph is full.
+    ///
+    /// ```rust
+    /// use nostr_wot::{WotGraph, relations::Relation};
+    ///
+    /// let mut graph = WotGraph::new();
+    /// graph.add_unique_node(1).unwrap();
+    /// graph.add_unique_node(1).unwrap(); // again
+    /// graph.add_unique_node(2).unwrap();
+    ///
+    /// assert_eq!(graph.inner().raw_nodes().len(), 2) // only 2 nodes
+    /// ```
+    pub fn add_unique_node(&mut self, node: u64) -> Option<NodeIndex> {
+        if let Some(node_index) = self
+            .inner
+            .node_indices()
+            .find(|idx| self.inner[*idx] == node)
+        {
+            return Some(node_index);
+        };
+
         self.inner.try_add_node(node).ok()
     }
 

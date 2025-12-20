@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Import and export the graph - by Awiteb
 - Expose inner graph - by Awiteb
 - Wot traits - by Awiteb
+- `WotGraph::add_unique_node` function - by Awiteb
 
 ### Dependencies
 
