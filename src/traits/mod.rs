@@ -9,8 +9,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-/// Hashes the given byte slice using the xxHash 64-bit algorithm with a
-/// constant seed value.
-pub fn hash_bytes(bytes: &[u8]) -> u64 {
-    xxhash_rust::xxh64::xxh64(bytes, 0xC0FFEE)
-}
+/// Basic operations on the graph
+pub mod basic;
+
+/// Dump WoT implmentation.
+pub mod dump_wot;

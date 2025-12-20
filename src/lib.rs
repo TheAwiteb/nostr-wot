@@ -32,6 +32,8 @@ pub mod error;
 mod parser;
 /// Graph relations
 pub mod relations;
+/// Extension traits for [`petgraph::graph::DiGraph<u64, u8>`]
+pub mod traits;
 /// Utils
 pub mod utils;
 
@@ -272,5 +274,65 @@ impl WotGraph {
         file.flush()?;
 
         Ok(())
+    }
+
+    /// Finds the neighboring nodes of `source` based on the given `relation`
+    /// and `direction`.
+    ///
+    /// For [`Direction::Outgoing`], returns nodes that `source` has the
+    /// relation **to**. For [`Direction::Incoming`], returns nodes that
+    /// have the relation **to** `source`.
+    #[inline(always)]
+    pub fn neighbors(
+        &self,
+        source: NodeIndex,
+        relation: relations::Relation,
+        direction: petgraph::Direction,
+    ) -> impl Iterator<Item = NodeIndex> {
+        traits::basic::BasicOperationsExt::get_matches_neighbors(
+            &self.inner,
+            source,
+            relation,
+            direction,
+        )
+    }
+
+    /// Counts how many nodes in the source's following hops (up to `max_hops`)
+    /// have the given `relation` with the target.
+    ///
+    /// For each hop, checks if any node in that hop has the specified relation
+    /// to the target. Each node is only counted once even if it appears in
+    /// multiple hops.
+    ///
+    /// # Time Complexity
+    /// O(V + E) where V is reachable vertices and E is their edges
+    ///
+    /// # Space Complexity
+    /// O(V) for visited set and current level storage
+    #[inline(always)]
+    pub fn count_neighbors_in_hops(
+        &self,
+        source: NodeIndex,
+        target: NodeIndex,
+        relation: relations::Relation,
+        max_hops: u8,
+    ) -> usize {
+        traits::basic::BasicOperationsExt::count_matches_in_hops(
+            &self.inner,
+            source,
+            target,
+            relation,
+            max_hops,
+        )
+    }
+
+    /// Counts the trust score between source and target within max_hops
+    /// distance. The score is calculated as (follow_count - mute_count),
+    /// where follow_count is the number of nodes following the target
+    /// within `max_hops` from source, and mute_count is the number
+    /// of nodes muting the target within the same distance.
+    #[inline(always)]
+    pub fn dump_wot(&self, source: NodeIndex, target: NodeIndex, max_hops: u8) -> isize {
+        traits::dump_wot::DumpWotExt::dump_wot(&self.inner, source, target, max_hops)
     }
 }
