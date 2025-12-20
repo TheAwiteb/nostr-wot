@@ -18,7 +18,11 @@ use std::{
 
 use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use nostr::key::PublicKey;
-use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
+use petgraph::{
+    Direction,
+    graph::{DiGraph, EdgeIndex, NodeIndex},
+    visit::EdgeRef,
+};
 
 pub(crate) const COMPRESSION_LEVEL: Compression = Compression::new(4);
 
@@ -63,18 +67,6 @@ impl WotGraph {
         }
     }
 
-    /// The inner [`petgraph::Graph`] instance.
-    #[inline]
-    pub fn inner(&self) -> &GraphType {
-        &self.inner
-    }
-
-    /// The mutable inner [`petgraph::Graph`] instance.
-    #[inline]
-    pub fn inner_mut(&mut self) -> &mut GraphType {
-        &mut self.inner
-    }
-
     /// Imports a graph from bytes. The graph should be previously exported
     /// using [`WotGraph::export`].
     #[inline]
@@ -113,6 +105,27 @@ impl WotGraph {
         })
     }
 
+    /// The inner [`petgraph::Graph`] instance.
+    #[inline]
+    pub fn inner(&self) -> &GraphType {
+        &self.inner
+    }
+
+    /// The mutable inner [`petgraph::Graph`] instance.
+    #[inline]
+    pub fn inner_mut(&mut self) -> &mut GraphType {
+        &mut self.inner
+    }
+
+    /// Returns the node index by public key. Returns `None` if the there is no
+    /// match
+    pub fn node_index(&self, pkey: &PublicKey) -> Option<NodeIndex> {
+        let pkey_hash = utils::hash_bytes(pkey.as_bytes());
+        self.inner
+            .node_indices()
+            .find(|idx| self.inner[*idx] == pkey_hash)
+    }
+
     /// Add a new node.
     ///
     /// Returns `None` if the graph is full.
@@ -139,10 +152,61 @@ impl WotGraph {
         self.add_node(pkey_hash)
     }
 
-    /// Adds an edge between `source` and `target` nodes with the given
-    /// relation.
+    /// Adds a unique edge between `source` and `target` nodes with the given
+    /// relation. If it's exists will do nothing.
     ///
     /// Returns `None` if the graph is full or if either node doesn't exist.
+    ///
+    /// ```rust
+    /// use nostr_wot::{WotGraph, relations::Relation};
+    ///
+    /// let mut graph = WotGraph::new();
+    /// let node1 = graph.add_node(1).unwrap();
+    /// let node2 = graph.add_node(2).unwrap();
+    /// graph
+    ///     .add_unique_edge(node1, node2, Relation::Follow)
+    ///     .unwrap();
+    /// graph
+    ///     .add_unique_edge(node1, node2, Relation::Follow)
+    ///     .unwrap();
+    /// graph.add_unique_edge(node1, node2, Relation::Mute).unwrap();
+    ///
+    /// assert_eq!(graph.inner().raw_edges().len(), 2) // only 2 edges
+    /// ```
+    pub fn add_unique_edge(
+        &mut self,
+        source: NodeIndex,
+        target: NodeIndex,
+        relation: relations::Relation,
+    ) -> Option<EdgeIndex> {
+        if let Some(edge) = self
+            .inner
+            .edges_directed(source, Direction::Outgoing)
+            .find(|edge| edge.target() == target && edge.weight() == &(relation as u8))
+        {
+            return Some(edge.id());
+        }
+
+        self.inner.try_add_edge(source, target, relation as u8).ok()
+    }
+
+    /// Adds an edge between `source` and `target` nodes with the given
+    /// relation. For a unique edge use [`WotGraph::add_unique_edge`] function.
+    ///
+    /// Returns `None` if the graph is full or if either node doesn't exist.
+    ///
+    /// ```rust
+    /// use nostr_wot::{WotGraph, relations::Relation};
+    ///
+    /// let mut graph = WotGraph::new();
+    /// let node1 = graph.add_node(1).unwrap();
+    /// let node2 = graph.add_node(2).unwrap();
+    /// graph.add_edge(node1, node2, Relation::Follow).unwrap();
+    /// graph.add_edge(node1, node2, Relation::Follow).unwrap();
+    /// graph.add_edge(node1, node2, Relation::Mute).unwrap();
+    ///
+    /// assert_eq!(graph.inner().raw_edges().len(), 3) // 3 edges (duplicated)
+    /// ```
     #[inline]
     pub fn add_edge(
         &mut self,
@@ -150,9 +214,7 @@ impl WotGraph {
         target: NodeIndex,
         relation: relations::Relation,
     ) -> Option<EdgeIndex> {
-        self.inner
-            .try_update_edge(source, target, relation as u8)
-            .ok()
+        self.inner.try_add_edge(source, target, relation as u8).ok()
     }
 
     /// Calculates the total number of bytes needed for exporting the graph.
