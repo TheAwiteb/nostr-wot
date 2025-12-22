@@ -20,26 +20,24 @@ relationships, then run the algorithms on them to analyze the Web of Trust
 use nostr_wot::WotGraph;
 use nostr::key::Keys;
 
-fn main() {
-    let mut graph = WotGraph::new();
-    
-    // Generate and add public keys as nodes to the graph
-    let node1 = graph.add_node_pkey(&Keys::generate().public_key).unwrap();
-    let node2 = graph.add_node_pkey(&Keys::generate().public_key).unwrap();
-    let node3 = graph.add_node_pkey(&Keys::generate().public_key).unwrap();
-    let node4 = graph.add_node_pkey(&Keys::generate().public_key).unwrap();
-    
-    // Define the relationships between nodes
-    graph.add_edge(node1, node2, Relation::Follow);
-    graph.add_edge(node2, node3, Relation::Follow);
-    graph.add_edge(node3, node4, Relation::Follow);
-    
-    // Evaluate the WoT score between node1 and node4 with different hop limits
-    // With a hop limit of 1, node1 only follows node2 and doesn't reach node4, so the score is 0.
-    assert_eq!(graph.dump_wot(node1, node4, 1), 0);
-    // With a hop limit of 2, node2 follows node3, which follows node4, so the score is 1.
-    assert_eq!(graph.dump_wot(node1, node4, 2), 1);
-}
+let mut graph = WotGraph::new();
+
+// Generate and add public keys as nodes to the graph
+let node1 = graph.add_node_pkey(&Keys::generate().public_key).unwrap();
+let node2 = graph.add_node_pkey(&Keys::generate().public_key).unwrap();
+let node3 = graph.add_node_pkey(&Keys::generate().public_key).unwrap();
+let node4 = graph.add_node_pkey(&Keys::generate().public_key).unwrap();
+
+// Define the relationships between nodes
+graph.add_edge(node1, node2, Relation::Follow);
+graph.add_edge(node2, node3, Relation::Follow);
+graph.add_edge(node3, node4, Relation::Follow);
+
+// Evaluate the WoT score between node1 and node4 with different hop limits
+// With a hop limit of 1, node1 only follows node2 and doesn't reach node4, so the score is 0.
+assert_eq!(graph.dump_wot(node1, node4, 1), 0);
+// With a hop limit of 2, node2 follows node3, which follows node4, so the score is 1.
+assert_eq!(graph.dump_wot(node1, node4, 2), 1);
 ```
 
 ## Import and Export
