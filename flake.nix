@@ -24,7 +24,9 @@
       {
         devShells.default = mkShell {
           packages = [
+            cargo-deny
             git-cliff
+            just
             taplo
           ];
 

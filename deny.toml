@@ -1,0 +1,36 @@
+[advisories]
+ignore = [
+  { id = "RUSTSEC-2024-0384", reason = "Reported to `rust-nostr/nostr` and it's WIP" },
+]
+
+[bans]
+multiple-versions = "deny"
+wildcards = 'deny'
+deny = [
+  "libssh2-sys",
+  { crate = "openssl", use-instead = "rustls" },
+  { crate = "openssl-sys", use-instead = "rustls" },
+  { crate = "cmake", use-instead = "cc" },
+]
+skip = [
+  { crate = "hashbrown@0.15.5", reason = "petgraph uses this old version" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git      = "deny"
+
+[licenses]
+confidence-threshold = 0.93
+allow = [
+  "0BSD",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "CC0-1.0",
+  "MIT",
+  "Unicode-3.0",
+  "Zlib",
+]
+private.ignore = false
