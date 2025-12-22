@@ -17,6 +17,8 @@
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
+        MSRV = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.rust-version;
+        msrvToolchain = pkgs.rust-bin.stable.${MSRV};
       in
       with pkgs;
       {
@@ -27,10 +29,20 @@
           ];
 
           nativeBuildInputs = [
-            (lib.hiPrio rust-bin.nightly."2025-08-07".rustfmt)
+            (lib.hiPrio rust-bin.nightly."2025-12-10".rustfmt)
             rust-bin.stable.latest.default
             rust-analyzer
           ];
+        };
+
+        apps.msrv = {
+          type = "app";
+          program = "${writeScript "run-script" ''
+            #!${stdenv.shell}
+            echo "Build with MSRV"
+            ${msrvToolchain.rustc}/bin/rustc --version
+            ${msrvToolchain.cargo}/bin/cargo build
+          ''}";
         };
       }
     );
