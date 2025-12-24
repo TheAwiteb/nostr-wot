@@ -19,4 +19,4 @@ easy-ext    = "1.0.2"
 nostr       = "0.44.2"
 petgraph    = { version = "0.8.3", features = ["rayon"] }
 thiserror   = "2.0.17"
-xxhash-rust = { version = "0.8.15", features = ["xxh32", "xxh64"] }
+xxhash-rust = { version = "0.8.15", features = ["xxh64"] }
